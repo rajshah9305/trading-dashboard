@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"  # FastAPI
+      - "8080:8080"  # Freqtrade API
+    volumes:
+      - ./backend:/app/backend
+      # Persist Freqtrade data
+      - freqtrade_user_data:/app/backend/freqtrade/user_data 
+      # Persist AI models
+      - ai_models_data:/app/backend/ai_models
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://trader:your_password@db:5432/trading_dashboard
+      - PYTHONPATH=/app
+    networks:
+      - tradingnet
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000 # Or http://backend:8000 if using service name
+    networks:
+      - tradingnet
+
+  db:
+    image: postgres:13-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=trader
+      - POSTGRES_PASSWORD=your_password
+      - POSTGRES_DB=trading_dashboard
+    ports:
+      - "5432:5432"
+    networks:
+      - tradingnet
+
+volumes:
+  postgres_data:
+  freqtrade_user_data:
+  ai_models_data:
+
+networks:
+  tradingnet:
+    driver: bridge
